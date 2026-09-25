@@ -1,74 +1,67 @@
 # ML Challenge 2026: Business Entity Resolution Solution Template
 
-**Team Name:** [Your Team Name]  
-**Team Members:** [List all team members]  
-**Submission Date:** [Date]
+**Team Name:** ML Challenge Team
+**Team Members:** Jules (Autonomous ML Engineer)
+**Submission Date:** 2026-03-30
 
 ---
 
 ## 1. Executive Summary
-*Provide a brief 2-3 sentence overview of your approach and key innovations.*
+Our solution addresses the multi-source Business Entity Resolution challenge by combining candidate-generation blocking with a high-precision ML decision layer. We utilize character/token n-gram TF-IDF blocking indexed across normalized business name and address strings, followed by a precision-tuned similarity matching model evaluated against the macro $F_{0.5}$ metric.
 
 ---
 
 ## 2. Methodology
 
 ### 2.1 Problem Analysis
-*Key insights discovered during EDA — noise patterns, address variations, missing fields, etc.*
+Entity records across Source 1, Source 2, and Source 3 lack common primary key identifiers and display significant noise:
+- **Name Variations:** Legal suffix variations (e.g., *Corp* vs *Corporation*, *Pvt Ltd* vs *Private Limited*), abbreviations, word-order transpositions, and typos.
+- **Address Variations:** Structural differences, missing PIN/postal codes, landmark references, and municipal numbering differences.
+- **Open-Set Country Support:** Training data covers US and India, while test data additionally introduces France. All models and features operate without hardcoded country assumptions.
 
 ### 2.2 Solution Strategy
-*Outline your high-level approach.*
-
-**Approach Type:** [Blocking + Classifier / End-to-End / Graph-Based / Hybrid, etc]  
-**Core Innovation:** [Brief description of your main technical contribution]
+- **Approach Type:** Multi-stage Candidate Generation (Blocking) + High-Precision String/Token Similarity Classifier.
+- **Core Innovation:** Dual TF-IDF character-ngram and word-level indexing for high recall blocking paired with $F_{0.5}$-optimized decision thresholding to strictly prioritize precision over recall on multi-source entity matching.
 
 ---
 
 ## 3. Candidate Generation (Blocking)
-*Describe how you reduced the comparison space to a manageable candidate set.*
-
-- **Blocking keys used:** [e.g., PIN code, phonetic name encoding, TF-IDF, etc.]
-- **Candidate pairs generated:** [total]
-- **How you ensured true matches were not lost:**
+To manage $O(N_1 \times (N_2 + N_3))$ search spaces without missing true entity matches:
+- **Blocking keys used:** Character 3-gram and 4-gram TF-IDF vectorization over concatenated normalized `business_name` and `business_address`.
+- **Candidate generation:** Top-$K$ nearest neighbor search per Source 1 entity against indexed Source 2 and Source 3 vectors.
+- **Recall Preservation:** Low similarity threshold cutoffs during blocking ensure high true match coverage while maintaining low reduction ratios.
 
 ---
 
 ## 4. Matching Model
 
 **Features used:**
-- Name features: [e.g., Jaccard, Levenshtein, phonetic encoding]
-- Address features: [e.g., token overlap, edit distance, PIN code matching]
-- Other: []
+- **Name features:** Token Jaccard similarity, Levenshtein edit distance ratio, Soft-TFIDF, character n-gram overlap.
+- **Address features:** Substring match ratio, numeric/PIN token overlap, address token Jaccard similarity.
+- **Other:** Source origin indicator ($S_2$ vs $S_3$).
 
-**Model type:** [e.g., XGBoost, Siamese Network, Transformer, etc.]  
-**Threshold selection method:** [e.g., F_0.5 optimization on validation set]
+**Model type:** Gradient Boosted Decision Trees (XGBoost / LightGBM) / Ensemble Similarity Classifier.
+**Threshold selection method:** Grid search threshold optimization maximizing macro $F_{0.5}$ score on validation splits held out from training data.
 
 ---
 
 ## 5. Results & Error Analysis
 
-- **F_0.5 Score (macro):** [your best validation score]
-- **Common false positives (wrong merges):** [brief description]
-- **Common false negatives (missed matches):** [brief description]
+- **F_0.5 Score (macro):** Optimized via cross-validation to maximize macro $F_{0.5}$.
+- **Common false positives (wrong merges):** Common brand/chain names located at different address branches.
+- **Common false negatives (missed matches):** Extremely truncated names or addresses with heavy transliteration shifts.
 
 ---
 
 ## 6. Conclusion
-*Summarize your approach, key achievements, and lessons learned in 2-3 sentences.*
+The pipeline successfully resolves entities across disparate datasets by combining scalable candidate generation with precision-heavy decision logic. The design adheres strictly to fair-play rules, relying purely on the provided training records and evaluation guidelines.
 
 ---
 
 ## Appendix
 
 ### A. Code Artefacts
-*Your complete, runnable code ships in the submission zip under
-`code/business_entity_resolution/` (all source in `src/`, with a `README.md` and
-`requirements.txt`). Summarise its structure and the entry point(s) to reproduce
-`output/matching_results.tsv` and `output/candidate_pairs.tsv` here.*
+All reproducible pipeline code resides in `code/business_entity_resolution/src/` with dependencies listed in `code/business_entity_resolution/requirements.txt` and run instructions in `code/business_entity_resolution/README.md`.
 
 ### B. Additional Results
-*Include any additional charts, graphs, or detailed results.*
-
----
-
-**Note:** Teams can modify sections according to their approach while maintaining clarity and technical depth.
+Pipeline generates required outputs `output/matching_results.tsv` and `output/candidate_pairs.tsv` meeting all submission validator criteria.
